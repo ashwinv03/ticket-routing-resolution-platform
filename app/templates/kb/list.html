@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Knowledge Base{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+  <div>
+    <h3 class="fw-bold mb-1"><i class="bi bi-book text-primary me-2"></i> Knowledge Base</h3>
+    <p class="text-muted small mb-0">Search self-service solutions, standard operating procedures, and troubleshooting guides.</p>
+  </div>
+  {% if current_user.is_authenticated and current_user.role in ['agent', 'supervisor', 'admin'] %}
+  <a href="{{ url_for('kb.create_article') }}" class="btn btn-primary">
+    <i class="bi bi-plus-lg me-1"></i> New Article
+  </a>
+  {% endif %}
+</div>
+
+<!-- Search & Category Filters -->
+<div class="card mb-4 border-0 shadow-sm">
+  <div class="card-body p-3">
+    <form method="GET" action="{{ url_for('kb.list_articles') }}" class="row g-2">
+      <div class="col-md-8">
+        <div class="input-group">
+          <input type="text" name="q" class="form-control" placeholder="Search keywords (e.g., VPN, Outlook, Password reset, Printer)..." value="{{ query_str }}">
+          <button class="btn btn-primary" type="submit"><i class="bi bi-search me-1"></i> Search</button>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <select name="category" class="form-select" onchange="this.form.submit()">
+          <option value="">All Categories</option>
+          {% for cat in categories %}
+            <option value="{{ cat }}" {% if request.args.get('category') == cat %}selected{% endif %}>{{ cat }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Articles Grid -->
+<div class="row g-3">
+  {% for article in articles %}
+  <div class="col-md-6 col-lg-4">
+    <div class="card h-100 shadow-sm border-0">
+      <div class="card-body d-flex flex-column">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span class="badge bg-light text-primary border">{{ article.category }}</span>
+          <small class="text-muted"><i class="bi bi-eye me-1"></i>{{ article.view_count or 0 }}</small>
+        </div>
+        <h5 class="fw-bold mb-2">
+          <a href="{{ url_for('kb.view_article', article_id=article.id) }}" class="text-dark text-decoration-none">
+            {{ article.title }}
+          </a>
+        </h5>
+        <p class="text-muted small flex-grow-1">
+          {{ article.content[:150] }}...
+        </p>
+        {% if article.tags %}
+        <div class="mb-3">
+          {% for tag in article.tags.split(',') %}
+            <span class="badge bg-secondary-subtle text-secondary small">#{{ tag.strip() }}</span>
+          {% endfor %}
+        </div>
+        {% endif %}
+        <div class="pt-2 border-top d-flex justify-content-between align-items-center">
+          <small class="text-muted">By {{ article.author.full_name }}</small>
+          <a href="{{ url_for('kb.view_article', article_id=article.id) }}" class="btn btn-sm btn-outline-primary">Read &rarr;</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="col-12 text-center py-5 text-muted">
+    <i class="bi bi-journal-x fs-1 d-block mb-2"></i>
+    No knowledge base articles found.
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

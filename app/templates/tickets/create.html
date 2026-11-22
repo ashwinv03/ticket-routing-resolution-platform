@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Create Support Ticket{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card shadow-sm border-0">
+      <div class="card-header bg-white py-3 border-bottom">
+        <h5 class="fw-bold mb-0"><i class="bi bi-plus-circle text-primary me-2"></i> Submit New Support Request</h5>
+        <small class="text-muted">Tickets will be automatically classified, routed to the relevant team, and assigned using workload-aware load balancing.</small>
+      </div>
+
+      <div class="card-body p-4">
+        <form method="POST" action="{{ url_for('tickets.create_ticket') }}">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Subject / Title <span class="text-danger">*</span></label>
+            <input type="text" name="title" class="form-control form-control-lg" placeholder="e.g., Cannot connect to corporate VPN after password change" required autofocus>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Category <span class="text-danger">*</span></label>
+              <select name="category" class="form-select" required>
+                <option value="Network & Infrastructure">Network & Infrastructure (VPN, Wi-Fi, Switches)</option>
+                <option value="Software & Applications" selected>Software & Applications (ERP, Tools, Bugs)</option>
+                <option value="Hardware & Peripherals">Hardware & Peripherals (Laptops, Monitors, Printers)</option>
+                <option value="HR & Payroll">HR & Payroll (Salaries, Leaves, Benefits)</option>
+                <option value="Billing & Finance">Billing & Finance (Invoices, Reimbursements)</option>
+                <option value="General IT">General IT & Access Requests</option>
+              </select>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Ticket Type</label>
+              <select name="ticket_type" class="form-select">
+                <option value="incident" selected>Incident (Something is broken)</option>
+                <option value="service_request">Service Request (Request for tool/access)</option>
+                <option value="bug">Bug / Defect (Software malfunction)</option>
+                <option value="inquiry">Inquiry (Question / Guidance)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Priority Matrix Calculator: Urgency x Impact -->
+          <div class="card bg-light p-3 mb-4 border">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <label class="fw-bold mb-0 text-dark"><i class="bi bi-speedometer me-1"></i> Priority Determination (ITIL Matrix)</label>
+              <span id="priority-preview-badge" class="badge bg-info text-dark">Calculated: P3 (Medium)</span>
+            </div>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label small fw-semibold">Urgency (Time sensitivity)</label>
+                <select name="urgency" id="urgency-select" class="form-select form-select-sm">
+                  <option value="low">Low (Can wait days without impact)</option>
+                  <option value="medium" selected>Medium (Impacting normal daily workflow)</option>
+                  <option value="high">High (Immediate work stoppage / critical deadline)</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small fw-semibold">Impact (Number of people affected)</label>
+                <select name="impact" id="impact-select" class="form-select form-select-sm">
+                  <option value="low">Low (Only myself)</option>
+                  <option value="medium" selected>Medium (Multiple colleagues / department)</option>
+                  <option value="high">High (Entire organization / clients affected)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label fw-semibold">Detailed Description <span class="text-danger">*</span></label>
+            <textarea name="description" rows="5" class="form-control" placeholder="Please describe the issue, specific error codes, troubleshooting steps you have already tried, and any relevant details..." required></textarea>
+          </div>
+
+          <div class="d-flex justify-content-end gap-2">
+            <a href="{{ url_for('tickets.list_tickets') }}" class="btn btn-outline-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary px-4 fw-semibold">
+              <i class="bi bi-send-check me-1"></i> Submit Ticket
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+{% block title %}Operations Dashboard{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+  <div>
+    <h3 class="fw-bold mb-1"><i class="bi bi-speedometer2 text-primary me-2"></i> Operational Intelligence Dashboard</h3>
+    <p class="text-muted small mb-0">Live metrics across routing performance, agent workload balancing, and SLA adherence.</p>
+  </div>
+</div>
+
+<!-- KPI Cards Row -->
+<div class="row g-3 mb-4">
+  <div class="col-sm-6 col-lg-3">
+    <div class="card border-0 shadow-sm">
+      <div class="card-body p-3">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <span class="text-muted small fw-semibold text-uppercase">Total Tickets</span>
+            <h3 class="fw-bold mb-0 text-dark">{{ total_tickets }}</h3>
+          </div>
+          <div class="bg-primary-subtle text-primary p-3 rounded-circle fs-4">
+            <i class="bi bi-inbox-fill"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-sm-6 col-lg-3">
+    <div class="card border-0 shadow-sm">
+      <div class="card-body p-3">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <span class="text-muted small fw-semibold text-uppercase">Open / In Progress</span>
+            <h3 class="fw-bold mb-0 text-warning">{{ open_tickets }}</h3>
+          </div>
+          <div class="bg-warning-subtle text-warning p-3 rounded-circle fs-4">
+            <i class="bi bi-hourglass-split"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-sm-6 col-lg-3">
+    <div class="card border-0 shadow-sm">
+      <div class="card-body p-3">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <span class="text-muted small fw-semibold text-uppercase">SLA Compliance</span>
+            <h3 class="fw-bold mb-0 {% if compliance_rate >= 90 %}text-success{% else %}text-danger{% endif %}">
+              {{ compliance_rate }}%
+            </h3>
+          </div>
+          <div class="bg-success-subtle text-success p-3 rounded-circle fs-4">
+            <i class="bi bi-shield-check"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-sm-6 col-lg-3">
+    <div class="card border-0 shadow-sm">
+      <div class="card-body p-3">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <span class="text-muted small fw-semibold text-uppercase">Average CSAT</span>
+            <h3 class="fw-bold mb-0 text-primary">{{ avg_csat }} <small class="fs-6 text-muted">/ 5</small></h3>
+          </div>
+          <div class="bg-info-subtle text-info p-3 rounded-circle fs-4">
+            <i class="bi bi-star-fill text-warning"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row g-3 mb-4">
+  <div class="col-lg-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-white py-3 border-bottom">
+        <h6 class="fw-bold mb-0"><i class="bi bi-pie-chart text-primary me-2"></i> Tickets by Priority Distribution</h6>
+      </div>
+      <div class="card-body d-flex justify-content-center align-items-center" style="height: 280px;">
+        <canvas id="priorityChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-white py-3 border-bottom">
+        <h6 class="fw-bold mb-0"><i class="bi bi-bar-chart text-primary me-2"></i> Tickets by Lifecycle Status</h6>
+      </div>
+      <div class="card-body" style="height: 280px;">
+        <canvas id="statusChart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Workload & Breach Monitoring Row -->
+<div class="row g-3">
+  <!-- Agent Workload Allocation -->
+  <div class="col-lg-7">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+        <h6 class="fw-bold mb-0"><i class="bi bi-person-lines-fill text-primary me-2"></i> Workload-Aware Agent Balancing</h6>
+        <span class="badge bg-light text-secondary border">Real-time Load</span>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th class="ps-3">Agent</th>
+                <th>Department</th>
+                <th>Active Tickets</th>
+                <th class="pe-3">Load Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for a in agent_workload %}
+              <tr>
+                <td class="ps-3 fw-semibold">{{ a.name }}</td>
+                <td><span class="badge bg-light text-dark border">{{ a.team }}</span></td>
+                <td><span class="fw-bold">{{ a.load }}</span> tickets</td>
+                <td class="pe-3">
+                  {% if a.load == 0 %}
+                    <span class="badge bg-secondary-subtle text-secondary">Idle (Next in queue)</span>
+                  {% elif a.load < 4 %}
+                    <span class="badge bg-success-subtle text-success">Optimal Load</span>
+                  {% elif a.load < 8 %}
+                    <span class="badge bg-warning-subtle text-warning">Moderate</span>
+                  {% else %}
+                    <span class="badge bg-danger-subtle text-danger">High Load</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% else %}
+              <tr><td colspan="4" class="text-center py-4 text-muted">No agents registered yet.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLA Breaches / Alerts -->
+  <div class="col-lg-5">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+        <h6 class="fw-bold mb-0 text-danger"><i class="bi bi-alarm-fill me-2"></i> SLA Escalation Monitor</h6>
+        <span class="badge bg-danger">{{ breached_tickets }} Breached</span>
+      </div>
+      <div class="card-body p-0">
+        <ul class="list-group list-group-flush">
+          {% for b in recent_breaches %}
+          <li class="list-group-item p-3">
+            <div class="d-flex justify-content-between align-items-start mb-1">
+              <a href="{{ url_for('tickets.ticket_detail', ticket_number=b.ticket_number) }}" class="fw-bold text-decoration-none">
+                {{ b.ticket_number }}
+              </a>
+              <span class="badge bg-danger-subtle text-danger">{{ b.priority }}</span>
+            </div>
+            <div class="text-truncate small text-dark mb-1">{{ b.title }}</div>
+            <div class="d-flex justify-content-between align-items-center small text-muted">
+              <span>Assigned: {{ b.assigned_agent.full_name if b.assigned_agent else 'Unassigned' }}</span>
+              <span class="text-danger">Exceeded: {{ b.due_date.strftime('%b %d, %H:%M') if b.due_date else 'N/A' }}</span>
+            </div>
+          </li>
+          {% else %}
+          <li class="list-group-item text-center py-5 text-muted border-0">
+            <i class="bi bi-check-circle-fill text-success fs-1 d-block mb-2"></i>
+            All active tickets are within SLA boundaries!
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  // Render Chart.js Priority Distribution
+  const ctxPriority = document.getElementById('priorityChart');
+  if (ctxPriority) {
+    new Chart(ctxPriority, {
+      type: 'doughnut',
+      data: {
+        labels: ['P1 - Critical', 'P2 - High', 'P3 - Medium', 'P4 - Low'],
+        datasets: [{
+          data: [
+            {{ priority_counts['P1'] }},
+            {{ priority_counts['P2'] }},
+            {{ priority_counts['P3'] }},
+            {{ priority_counts['P4'] }}
+          ],
+          backgroundColor: ['#ef4444', '#f97316', '#eab308', '#94a3b8']
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom' } }
+      }
+    });
+  }
+
+  // Render Chart.js Status Breakdown
+  const ctxStatus = document.getElementById('statusChart');
+  if (ctxStatus) {
+    new Chart(ctxStatus, {
+      type: 'bar',
+      data: {
+        labels: {{ status_counts.keys()|list|tojson }},
+        datasets: [{
+          label: 'Ticket Count',
+          data: {{ status_counts.values()|list|tojson }},
+          backgroundColor: '#3b82f6',
+          borderRadius: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+      }
+    });
+  }
+</script>
+{% endblock %}

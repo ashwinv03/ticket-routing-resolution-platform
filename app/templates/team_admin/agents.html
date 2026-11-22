@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% block title %}Manage Agents - {{ team.name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+  <div>
+    <div class="d-flex align-items-center gap-2 mb-1">
+      <h3 class="fw-bold mb-0"><i class="bi bi-people-fill text-primary me-1"></i> Department Agents</h3>
+      <span class="badge bg-secondary text-uppercase">{{ team.name }}</span>
+    </div>
+    <p class="text-muted small mb-0">Add, provision, or remove support agents assigned to {{ team.name }}.</p>
+  </div>
+  <div class="d-flex gap-2">
+    <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addExistingModal">
+      <i class="bi bi-person-plus me-1"></i> Add Existing User
+    </button>
+    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createNewModal">
+      <i class="bi bi-person-plus-fill me-1"></i> Register New Agent
+    </button>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card shadow-sm border-0">
+      <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+        <h6 class="fw-bold mb-0">Active Department Staff ({{ agents|length }})</h6>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th class="ps-3">Name</th>
+                <th>Username</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Active Load</th>
+                <th class="text-end pe-3">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for agent in agents %}
+              <tr>
+                <td class="ps-3 fw-bold">{{ agent.full_name }}</td>
+                <td><code>{{ agent.username }}</code></td>
+                <td class="text-muted small">{{ agent.email }}</td>
+                <td>
+                  {% if agent.role == 'team_admin' %}
+                    <span class="badge bg-primary">Team Admin</span>
+                  {% else %}
+                    <span class="badge bg-secondary-subtle text-secondary">Agent</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <span class="badge bg-info-subtle text-info-emphasis">{{ agent.active_ticket_count }} tickets</span>
+                </td>
+                <td class="text-end pe-3">
+                  {% if agent.id != current_user.id %}
+                  <form method="POST" action="{{ url_for('team_admin.remove_agent', user_id=agent.id) }}" class="d-inline" onsubmit="return confirm('Remove {{ agent.full_name }} from {{ team.name }}? Their active tickets will be returned to the team pool.');">
+                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove from Team">
+                      <i class="bi bi-person-dash"></i> Remove
+                    </button>
+                  </form>
+                  {% else %}
+                  <span class="small text-muted italic">Current User</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% else %}
+              <tr><td colspan="6" class="text-center py-4 text-muted">No agents currently assigned to this department.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card shadow-sm border-0 bg-light p-3">
+      <h6 class="fw-bold mb-2"><i class="bi bi-info-circle text-primary me-1"></i> Workload Load Balancing</h6>
+      <p class="small text-muted mb-2">
+        When tickets are automatically routed to <strong>{{ team.name }}</strong>, the system calculates the active ticket count for each active agent and assigns incoming tickets to the least-loaded member.
+      </p>
+      <hr>
+      <h6 class="fw-bold mb-2"><i class="bi bi-journal-text text-primary me-1"></i> Department Knowledge</h6>
+      <p class="small text-muted mb-3">
+        Keep your team's resolutions fast and consistent by publishing articles to the shared Knowledge Base.
+      </p>
+      <a href="{{ url_for('kb.create_article') }}" class="btn btn-sm btn-outline-primary w-100">
+        <i class="bi bi-plus-circle me-1"></i> Write KB Article
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- Modal 1: Add Existing User -->
+<div class="modal fade" id="addExistingModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold">Add Existing User to {{ team.name }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" action="{{ url_for('team_admin.manage_agents') }}">
+        <input type="hidden" name="action" value="add_existing">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Select User</label>
+            <select name="user_id" class="form-select" required>
+              <option value="">-- Choose User --</option>
+              {% for u in available_users %}
+                <option value="{{ u.id }}">
+                  {{ u.full_name }} (@{{ u.username }}) - Current: {{ u.role }} {% if u.team %}({{ u.team.name }}){% endif %}
+                </option>
+              {% endfor %}
+            </select>
+            <div class="form-text">If user is a requester, their role will be upgraded to support agent.</div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Add to Team</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal 2: Create Brand New Agent -->
+<div class="modal fade" id="createNewModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold">Register New Agent for {{ team.name }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" action="{{ url_for('team_admin.manage_agents') }}">
+        <input type="hidden" name="action" value="create_new">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Full Name <span class="text-danger">*</span></label>
+            <input type="text" name="full_name" class="form-control" placeholder="Jane Miller" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Username <span class="text-danger">*</span></label>
+            <input type="text" name="username" class="form-control" placeholder="jane_agent" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Email Address <span class="text-danger">*</span></label>
+            <input type="email" name="email" class="form-control" placeholder="jane@company.org" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Password <span class="text-danger">*</span></label>
+            <input type="password" name="password" class="form-control" placeholder="••••••••" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create Agent</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

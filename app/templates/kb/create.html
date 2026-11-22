@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Create Knowledge Base Article{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card shadow-sm border-0">
+      <div class="card-header bg-white py-3 border-bottom">
+        <h5 class="fw-bold mb-0"><i class="bi bi-file-earmark-plus text-primary me-2"></i> Publish Knowledge Base Article</h5>
+        <small class="text-muted">Document common solutions and procedures. This knowledge will also be used by the AI resolution assistant.</small>
+      </div>
+      <div class="card-body p-4">
+        <form method="POST" action="{{ url_for('kb.create_article') }}">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Article Title <span class="text-danger">*</span></label>
+            <input type="text" name="title" class="form-control" placeholder="e.g., Troubleshooting Cisco AnyConnect VPN Connection Timeout" required autofocus>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Category <span class="text-danger">*</span></label>
+              <input type="text" name="category" class="form-control" placeholder="e.g., Network, Software, Hardware" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Tags (Comma-separated)</label>
+              <input type="text" name="tags" class="form-control" placeholder="e.g., vpn, cisco, timeout, error 504">
+            </div>
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label fw-semibold">Solution Content / Steps <span class="text-danger">*</span></label>
+            <textarea name="content" rows="10" class="form-control" placeholder="Detail the step-by-step diagnostic checklist and resolution procedure..." required></textarea>
+          </div>
+
+          <div class="d-flex justify-content-end gap-2">
+            <a href="{{ url_for('kb.list_articles') }}" class="btn btn-outline-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary px-4 fw-semibold">Publish Article</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

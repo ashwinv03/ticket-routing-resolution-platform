@@ -1,0 +1,372 @@
+================================================================================
+AI-POWERED TICKET ROUTING & RESOLUTION PLATFORM (TICKETFLOW)
+PROJECT WORKFLOW, FUNCTIONALITY SPECIFICATION & DEMONSTRATION GUIDE
+================================================================================
+
+Target Environment: 4 GB RAM Laptop (Zero Heavy Local ML, PySQLite Zero-Daemon DB)
+Technology Stack: Python 3.12, Flask, PySQLite (SQLAlchemy), Bootstrap 5, Chart.js, Google Gemini API
+Bachelor's Degree Final Project (16-Week Implementation)
+
+--------------------------------------------------------------------------------
+TABLE OF CONTENTS
+--------------------------------------------------------------------------------
+1. Core Architecture & 4 GB RAM Design Principles
+2. Complete Functionality Breakdown
+3. User Roles & Permission Matrix (RBAC)
+4. Ticket Lifecycle State Machine & SLA Engine
+5. Step-by-Step Project Demonstration Script (Presentation Guide)
+6. Evaluator / Viva Q&A Defense Guide
+
+================================================================================
+1. CORE ARCHITECTURE & 4 GB RAM DESIGN PRINCIPLES
+================================================================================
+
+A standard machine learning approach (loading BERT, RoBERTa, or LLaMA locally) 
+requires 2 to 6+ GB of RAM just for model weights, resulting in browser tab crashes, 
+heavy disk swap thrashing, and freezing on 4 GB laptops.
+
+This platform solves that constraint through a high-efficiency architecture:
+
+1. In-Process Zero-Daemon Database (PySQLite):
+   - SQLite is compiled directly into Python's runtime via `sqlite3`.
+   - Requires zero background server daemons (unlike MySQL or MongoDB which consume 
+     300–600 MB of RAM at idle).
+   - Entire database resides in a single local file (`tickets.db`) with instant ACID 
+     transactions and zero memory overhead.
+
+2. Cloud LLM API Offloading:
+   - Intelligence operations (ticket summarization, resolution suggestions, and 
+     draft response generation) are offloaded to Cloud LLM APIs (e.g. Google Gemini 
+     API / Groq).
+   - The laptop only sends lightweight HTTP JSON payloads (< 5 KB) and receives text.
+   - Built-in heuristic offline fallback ensures the platform never fails even if 
+     internet is disconnected during an exam defense.
+
+3. Total Resource Footprint:
+   - Operating memory usage of the entire backend and database: < 150 MB RAM.
+   - Leaves over 3.5 GB of RAM free for the operating system and browser.
+
+================================================================================
+2. COMPLETE FUNCTIONALITY BREAKDOWN
+================================================================================
+
+[A] Two-Stage Intelligent Routing Engine
+  * Stage 1 - Configurable Keyword/RegEx Department Routing:
+    - Scans incoming ticket title and description against active `RoutingRule` entries 
+      ordered by precedence (`priority_order`).
+    - Routes ticket directly to the appropriate team (e.g. VPN -> Network & Infrastructure, 
+      SQL crash -> Software & Applications, Docker/K8s -> Cloud & DevOps).
+    - Can optionally enforce a priority override.
+  * Stage 2 - Workload-Aware Agent Allocation:
+    - Queries all active personnel (`agent` and `team_admin`) assigned to that department.
+    - Computes each member's active ticket load (tickets in 'assigned', 'in_progress', 
+      'pending_user').
+    - Assigns the ticket dynamically to the member with the minimum active load.
+    - If no agents are configured, leaves ticket in the team unassigned pool.
+
+[B] ITIL SLA & Priority Matrix Engine
+  * ITIL Priority Matrix:
+    - Priority is determined dynamically from Urgency (Low/Medium/High) x Impact (Low/Medium/High).
+    - Prevents requesters from arbitrarily tagging every ticket as 'Critical'.
+    - Yields standard ITIL priority tiers: P1 (Critical), P2 (High), P3 (Medium), P4 (Low).
+  * Response & Resolution Countdown:
+    - Sets Time to First Response (TTFR) and Time to Resolution (TTR) deadlines based on `SLAPolicy`.
+    - Real-time comparison flags SLA breaches when current time exceeds due date.
+  * Fair SLA Clock Pausing:
+    - When a ticket status transitions to 'Pending User' (waiting for user details/logs), 
+      the SLA clock records `paused_at`.
+    - When the requester replies or the agent reactivates the ticket, the elapsed pause 
+      duration is added to `total_paused_seconds` and the target due date is pushed forward.
+  * Requester Confidentiality:
+    - SLA countdown timers and breach warning badges are hidden from requesters.
+    - Prevents customer agitation; strictly treated as internal support performance targets.
+
+[C] Universal Ticket Search
+  * Located prominently in the top navigation bar.
+  * Exact Ticket # Matching: Entering `INC-20261120-0001` or `inc-20261120-0001` redirects 
+    instantly to that ticket's workstation page.
+  * Substring / Digit Matching: Entering `0001` or `0002` locates the matching ticket directly.
+  * Keyword Fallback: Entering a title or topic filters the ticket queue with search results.
+  * Enforces role security (requesters can only search and view their own tickets).
+
+[D] Agent Workstation & AI Assistant
+  * Dual-Channel Conversation:
+    - Public Replies: Visible to the end-user requester.
+    - Internal Private Notes: Highlighted in amber with lock icons, strictly visible only 
+      to agents, team admins, and global admins.
+  * File Attachments:
+    - Upload screenshots and logs (`.png`, `.jpg`, `.pdf`, `.txt`, `.docx`) saved to static/uploads.
+  * AI Resolution Assistant (Cloud LLM API):
+    1. Summarize Ticket: Generates a 3-bullet executive summary (core problem, actions taken, 
+       pending blocker) from long ticket conversations.
+    2. Suggest Resolution: Retrieves top matching Knowledge Base articles from SQLite and 
+       synthesizes step-by-step diagnostic advice for the agent.
+    3. Draft Response: Generates a polite, context-aware reply to the requester, featuring a 
+       1-click button to insert the generated draft directly into the comment box.
+  * Reassignment Modal:
+    - Allows agents and leads to transfer a ticket to another department or specific agent.
+    - Agent dropdown groups personnel by department `<optgroup>` and displays their real-time loads.
+  * Full Lifecycle History (Audit Trail):
+    - Dedicated tab tracking ticket creation, routing rule match, auto-assignment, status changes, 
+      and reassignment with timestamps and user attribution.
+
+[E] Searchable Knowledge Base (Self-Service & Agent Assistance)
+  * Publicly searchable repository of troubleshooting guides and standard operating procedures.
+  * Full-text keyword search across titles, contents, and comma-separated tags.
+  * Article view counter to identify high-frequency recurring issues.
+  * Acts as ground-truth retrieval context for the AI Resolution Recommender.
+
+[F] Department & Team Administration (Global & Scoped)
+  * Global Admin Console:
+    - Operational Dashboard with Chart.js charts (Priority distribution doughnut, Status breakdown bar).
+    - Department CRUD: Create new teams, edit team name/description, assign Team Leads, and 
+      delete teams with safe member/ticket unassignment.
+    - Configurable routing rules table (precedence, keywords, matching field, target team).
+    - SLA policy editor for P1..P4 response and resolution targets.
+    - User management console (roles, active toggles, team assignments).
+  * Team Admin Console (Department-Scoped):
+    - Access isolated strictly to the assigned team.
+    - Departmental Analytics Dashboard (team tickets, open queue, team SLA compliance %, team CSAT).
+    - Manage Team Agents: View team staff workloads, add existing users to the team, register 
+      new agents directly into the team, or remove agents.
+    - Department Routing Keywords: Manage keyword rules that route tickets to this department.
+
+[G] Customer Satisfaction (CSAT) Rating
+  * When a ticket is marked 'Resolved' or 'Closed', the requester is presented with a 1 to 5 star 
+    rating widget and optional feedback textarea.
+  * Feeds into agent and team quality scores on the analytics dashboards.
+
+================================================================================
+3. USER ROLES & PERMISSION MATRIX (RBAC)
+================================================================================
+
+Role                 | Key Views / Navigation            | Allowed Actions
+---------------------+-----------------------------------+-----------------------------------------
+Requester            | - My Tickets                      | - Create tickets (Urgency x Impact)
+(End-User)           | - Browse Knowledge Base           | - Add public comments & file attachments
+                     | - Profile                         | - Reopen / Confirm close resolved tickets
+                     |                                   | - Submit 1–5 star CSAT feedback
+                     |                                   | * (SLA targets/breaches strictly HIDDEN)
+---------------------+-----------------------------------+-----------------------------------------
+Support Agent        | - My Assigned Tickets             | - View team & assigned queues
+                     | - Team Queue                      | - Post public replies & internal notes
+                     | - Knowledge Base                  | - Use AI Assistant (Summarize, Draft, KB)
+                     | - Agent Workstation               | - Reassign tickets across teams
+                     |                                   | - Transition ticket statuses (In Progress,
+                     |                                   |   Pending User, Resolved)
+---------------------+-----------------------------------+-----------------------------------------
+Team Admin           | - <Team Name> Admin Dropdown      | - All Support Agent actions PLUS:
+(Supervisor / Lead)  | - Department Dashboard            | - View department-specific metrics & CSAT
+                     | - Manage Department Agents        | - Add, provision, or remove department agents
+                     | - Department Routing Rules        | - Add/edit/delete keyword routing rules for team
+                     | - Department Queue                | - Publish & update Knowledge Base articles
+---------------------+-----------------------------------+-----------------------------------------
+System Administrator | - Administration Dropdown         | - Full system-wide oversight
+                     | - Executive Analytics Dashboard   | - Create, edit, and delete departments
+                     | - Global Routing Rules            | - Configure global SLA targets (P1..P4)
+                     | - SLA Policies                    | - Manage all user accounts and assign roles
+                     | - User Management                 | - Override any ticket assignment or status
+                     | - Teams Management                |
+
+================================================================================
+4. TICKET LIFECYCLE STATE MACHINE & SLA ENGINE
+================================================================================
+
+Lifecycle State Flow:
+  [New] 
+    --> [Assigned] (via automated 2-stage routing engine)
+    --> [In Progress] (agent acknowledges & diagnoses)
+    --> [Pending User] (waiting for requester info -> SLA CLOCK PAUSED)
+    --> [In Progress] (requester replies -> SLA CLOCK RESUMED)
+    --> [Resolved] (solution provided; CSAT rating unlocked for requester)
+    --> [Closed] (confirmed resolved or auto-closed)
+    --> [Reopened] (requester indicates issue persists -> returns to active work)
+
+SLA Policy Matrix:
+Priority Level | First Response Target | Resolution Target | Escalation Warning
+---------------+-----------------------+-------------------+-------------------
+P1 - Critical  | 0.5 Hours (30 mins)   | 4.0 Hours         | 75% elapsed warning
+P2 - High      | 1.0 Hour  (60 mins)   | 8.0 Hours         | 80% elapsed warning
+P3 - Medium    | 4.0 Hours             | 24.0 Hours        | 2 hours remaining
+P4 - Low       | 8.0 Hours             | 48.0 Hours        | Standard queue
+
+================================================================================
+5. STEP-BY-STEP PROJECT DEMONSTRATION SCRIPT (PRESENTATION GUIDE)
+================================================================================
+
+Follow this exact sequence during your final project evaluation or defense.
+
+--------------------------------------------------------------------------------
+STEP 1: Introduction & Architecture Pitch (1-2 Minutes)
+--------------------------------------------------------------------------------
+1. Introduce project title: "AI-Powered Ticket Routing and Resolution Platform".
+2. Key pitch to evaluators:
+   - "Organizations struggle with manual triage delays, ticket ping-pong between teams, 
+     and agent burnout. Our platform automates the entire lifecycle."
+   - "Crucially, the entire system is architected to run in under 150 MB of RAM on a standard 
+     4 GB laptop by leveraging PySQLite (zero background server daemon) and Cloud LLM REST APIs, 
+     eliminating the multi-gigabyte memory footprint of local machine learning."
+3. Show the application running in the terminal:
+   `python run.py` -> Running on http://127.0.0.1:5000
+
+--------------------------------------------------------------------------------
+STEP 2: Global Administrator Oversight (2 Minutes)
+--------------------------------------------------------------------------------
+1. Navigate to http://127.0.0.1:5000/auth/login.
+2. Click the quick-login shortcut: [Global Admin] (`admin` / `admin123`).
+3. Point out the Executive Dashboard:
+   - Highlight KPI cards: Total Tickets, Open Queue, SLA Compliance %, and Average CSAT.
+   - Show Chart.js visual charts: Priority Distribution doughnut and Status Breakdown bar.
+   - Show Workload Balancing table: Real-time active ticket counts across department agents.
+   - Show SLA Escalation Monitor: Tickets flagged in red due to breached deadlines.
+4. Show Department Management:
+   - Navigate to Administration -> Teams & Departments.
+   - Show the 7 departments, their designated Team Admins, and staff counts.
+   - Demonstrate the Edit Team modal: Click 'Edit' on a team, show how a Team Admin can 
+     be assigned or changed.
+   - Mention the safe deletion capability (unassigns members and tickets without crashing).
+5. Show Routing Rules:
+   - Navigate to Administration -> Routing Rules.
+   - Explain that rules are evaluated in priority order (Order 1, 2, 3...) matching keywords 
+     in incoming ticket text to target teams.
+
+--------------------------------------------------------------------------------
+STEP 3: Requester Experience & Intelligent Classification (2 Minutes)
+--------------------------------------------------------------------------------
+1. Log out, then click quick-login: [Requester] (`john_user` / `user123`).
+2. Show the Requester Ticket List:
+   - Point out that John only sees his own submitted tickets.
+   - **CRITICAL DEMO POINT**: Point out that the "SLA Status" column is completely hidden 
+     from John Doe to prevent customer friction.
+3. Demonstrate Universal Search:
+   - In the top navbar, type `INC-20261120-0001` or just `0001` into the search box and press Enter.
+   - Show how it instantly jumps directly to that specific ticket!
+4. Create a New Support Ticket:
+   - Click the "+ New Ticket" button.
+   - Title: "GlobalProtect VPN gateway timeout when working from home"
+   - Category: "Network & Infrastructure"
+   - Show the Priority Matrix Calculator:
+     - Change Urgency to "High" and Impact to "Medium".
+     - Notice the badge dynamically recalculates to "Calculated: P2 (High)" in real-time.
+   - Description: "Every time I connect to the corporate VPN, it times out after entering 2FA."
+   - Click "Submit Ticket".
+   - Show the success flash message: The ticket is created and automatically classified as P2!
+
+--------------------------------------------------------------------------------
+STEP 4: Two-Stage Routing & Workload Allocation Proof (1-2 Minutes)
+--------------------------------------------------------------------------------
+1. Look at the newly created ticket's detail:
+   - Target department was automatically determined as "Network & Infrastructure" (matched VPN rule).
+   - Target support agent was automatically assigned based on who had the lowest active workload 
+     among the Network team members!
+2. Click on the "Audit Trail" tab:
+   - Point out the immutable history log:
+     * Event 1: Created by John Doe (P2).
+     * Event 2: Auto-routed by System Engine (Matched rule 'VPN & Network Infrastructure Rule').
+     * Event 3: Auto-assigned to least-loaded agent with active ticket count recorded.
+
+--------------------------------------------------------------------------------
+STEP 5: Scoped Team Admin / Supervisor Console (2 Minutes)
+--------------------------------------------------------------------------------
+1. Log out, then click quick-login: [Team Admin (Network)] (`agent_net` / `agent123`).
+2. Point out the navbar:
+   - Instead of global administration, Alex Rivera sees the dedicated **"Network & Infrastructure Admin"** menu.
+3. Show the Department Dashboard (`/team/dashboard`):
+   - All metrics (ticket count, compliance %, priority distribution) are filtered strictly 
+     to Network & Infrastructure!
+4. Show Agent Management (`/team/agents`):
+   - Show the 4 department staff (Alex Rivera Lead + 3 working members: Ben, Chris, Dana).
+   - Click "Add Existing User" to show how users can be transferred into the team.
+   - Click "Register New Agent" to show how a lead can provision staff directly for their team.
+5. Show Department Routing Rules (`/team/routing-rules`):
+   - Show that Alex can manage keyword triggers specifically for the Network team.
+
+--------------------------------------------------------------------------------
+STEP 6: Agent Workstation & AI Assistant Capabilities (3 Minutes)
+--------------------------------------------------------------------------------
+1. As an agent or lead, open ticket `INC-20261120-0001` (or the newly created VPN ticket).
+2. Point out the Support Staff Workstation:
+   - Staff CAN see the SLA Monitor Card (Target resolution time, first response time, running state).
+3. Demonstrate AI Resolution Assistant:
+   - Click **[Summarize Ticket]**:
+     * Show how the AI analyzes the entire conversation thread and returns 3 concise bullets 
+       (Core Issue, Troubleshooting Done, Next Blocker).
+   - Click **[Suggest Resolution]**:
+     * Show how the system searches relevant Knowledge Base articles in SQLite (e.g. Cisco AnyConnect guide) 
+       and provides structured, step-by-step diagnostic advice for the agent.
+   - Click **[Draft Reply]**:
+     * Show the polite, professionally formatted email generated for the requester.
+     * Click **"Insert into Response Box"** to show how the draft instantly populates the comment textarea!
+4. Demonstrate Dual-Channel Communication:
+   - Type an internal note: "ISP routing issue identified on hop 4. Escalating upstream."
+   - Check the box: [x] "Internal Note (Hidden from Requester)".
+   - Click "Send Reply".
+   - Point out that it appears with a distinctive amber background and padlock icon.
+5. Demonstrate Cross-Department Reassignment:
+   - Click **"Reassign Ticket"**.
+   - Show the modal with department-grouped `<optgroup>` agents.
+   - Show how easy it is to transfer the ticket to another team or specific engineer.
+
+--------------------------------------------------------------------------------
+STEP 7: SLA Clock Pausing & Resolution Lifecycle (2 Minutes)
+--------------------------------------------------------------------------------
+1. Change Ticket Status to `Pending User (Clock Paused)`:
+   - Click Update.
+   - Point out the SLA badge: It changes from "RUNNING" to a grey "PAUSED" badge!
+   - Explain to examiners: "This prevents unfair SLA penalties while support is waiting 
+     for the user to provide logs or test a fix."
+2. Transition Status to `Resolved`:
+   - Change status to "Resolved" and click Update.
+   - SLA badge changes to green "MET".
+3. Log back in as Requester (`john_user`):
+   - Open the resolved ticket.
+   - Point out the **Customer Satisfaction (CSAT) Rating Card**:
+     * Select "5 Stars - Excellent".
+     * Add comment: "Alex and team resolved my VPN issue within hours. Fantastic service!"
+     * Click "Submit Rating".
+   - Show that the rating is recorded and updates team metrics.
+
+================================================================================
+6. EVALUATOR / VIVA Q&A DEFENSE PREPARATION
+================================================================================
+
+Q1: Why did you use PySQLite instead of MySQL, PostgreSQL, or MongoDB?
+A1: "For enterprise scalability in cloud production, PostgreSQL or MySQL are standard. 
+However, for an academic bachelor's project specified to run on a resource-constrained 
+4 GB RAM development laptop, traditional database daemons consume 300 to 600 MB of RAM at idle. 
+PySQLite provides full ACID compliance, relational integrity, foreign key constraints, and 
+zero server overhead by running directly in-process within the Python runtime. The entire schema 
+is managed through SQLAlchemy ORM, meaning migrating from SQLite to PostgreSQL in production 
+requires changing only a single connection string."
+
+Q2: Why did you not train a local machine learning model for routing?
+A2: "Training or running BERT or transformer models locally on a 4 GB RAM machine without a dedicated 
+GPU causes out-of-memory errors and operating system freezing. Furthermore, in real-world ITIL 
+operations, organizations require deterministic, auditable routing rules that team leads can 
+instantly update without re-annotating datasets and retraining neural networks. We combined a 
+high-speed deterministic two-stage keyword/workload engine with cloud LLM APIs for generative tasks, 
+achieving sub-second response times with zero local memory overhead."
+
+Q3: How does your workload-aware assignment algorithm work?
+A3: "When a ticket matches a department, the system computes the active load for each active staff 
+member in that department:
+   Active Workload = count(tickets where status in ['assigned', 'in_progress', 'pending_user'])
+The algorithm selects the agent with min(Active Workload). This eliminates bottlenecking where a fast 
+agent gets overloaded while others remain idle."
+
+Q4: How does SLA clock pausing work mathematically?
+A4: "When status changes to 'pending_user', the timestamp is stored in `paused_at`. When the ticket 
+is resumed, the elapsed pause time in seconds is calculated:
+   paused_seconds = (now - paused_at)
+This duration is added to `total_paused_seconds` and the target resolution deadline is pushed forward:
+   due_date = due_date + timedelta(seconds=paused_seconds)
+This ensures neither the agent nor the organization is penalized for delays caused by customer response times."
+
+Q5: Why is SLA information hidden from the requester?
+A5: "In ITIL and customer service standards, SLAs are internal operational agreements between support 
+management and IT teams. Exposing internal breach timers to customers causes unwarranted friction and 
+distracts from the actual resolution process. Support agents and supervisors retain full visibility."
+
+================================================================================
+END OF WORKFLOW & PRESENTATION SCRIPT
+================================================================================
